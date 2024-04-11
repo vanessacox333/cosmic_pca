@@ -1,0 +1,220 @@
+---
+title: "4442 PSA Demo"
+author: "Vanessa Cox and Gayla Hess"
+date: "2024-Spring Quarter"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(factoextra)
+
+```
+
+##Preamble
+
+#Data Information
+CONTEXT - The Sloan Digital Sky Survey or SDSS is a major multi-spectral imaging and spectroscopic redshift survey using a dedicated 2.5-m wide-angle optical telescope at Apache Point Observatory in New Mexico, United States. SDSS has gathered image and spectroscopic data of millions of celestial objects spanning the entire night sky. Each object is classified in one of the eight categories by help of their optical and spectroscopic properties.
+Data Source - This public domain data was downloaded February 2024 and appears to have been available on this site for about a year.
+Link - https://www.kaggle.com/datasets/hari31416/celestialclassify?resource=download 
+
+Description: The listed data source training data included 4,000,00 observations across 52 variables. The variable explanations are as followed:
+
+objID: Unique SDSS identifier composed from [skyVersion,rerun,run,camcol,field,obj]. 
+run: Run number 
+camcol: Camera column 
+field: Field number
+type: Type classification of the object (star, galaxy, cosmic ray, etc.)
+rowv: Row-component of object's velocity (deg/day)
+colv: Column-component of object's velocity (deg/day)
+psfMag_u: PSF magnitude (mag)
+psfMag_g: PSF magnitude (mag)
+psfMag_r: PSF magnitude (mag)
+psfMag_i: PSF magnitude (mag)
+psfMag_z: PSF magnitude (mag)
+petroRad_u: Petrosian radius (arcsec)
+petroRad_g: Petrosian radius (arcsec)
+petroRad_r: Petrosian radius (arcsec)
+petroRad_i: Petrosian radius (arcsec)
+petroRad_z: Petrosian radius (arcsec)
+q_u: Stokes Q parameter 
+q_g: Stokes Q parameter
+q_r: Stokes Q parameter
+q_i: Stokes Q parameter
+q_z: Stokes Q parameter
+u_u: Stokes U parameter
+u_g: Stokes U parameter
+u_r: Stokes U parameter
+u_i: Stokes U parameter
+u_z: Stokes U parameter
+expRad_u: Exponential fit scale radius, here defined to be the same as the half-light radius, also called the effective radius (arcsec)
+expRad_g: Exponential fit scale radius, here defined to be the same as the half-light radius, also called the effective radius (arcsec)
+expRad_r: Exponential fit scale radius, here defined to be the same as the half-light radius, also called the effective radius (arcsec)
+expRad_i: Exponential fit scale radius, here defined to be the same as the half-light radius, also called the effective radius (arcsec)
+expRad_z: Exponential fit scale radius, here defined to be the same as the half-light radius, also called the effective radius (arcsec)
+expAB_u: Exponential fit b/a
+expAB_g: Exponential fit b/a
+expAB_r: Exponential fit b/a
+expAB_i: Exponential fit b/a
+expAB_z: Exponential fit b/a
+modelFlux_u: better of DeV/Exp flux fit (nanomaggies)
+modelFlux_g: better of DeV/Exp flux fit (nanomaggies)
+modelFlux_r: better of DeV/Exp flux fit (nanomaggies)
+modelFlux_i: better of DeV/Exp flux fit (nanomaggies)
+modelFlux_z: better of DeV/Exp flux fit (nanomaggies)
+ra: J2000 Right Ascension (r-band) (deg)
+dec: J2000 Declination (r-band) (deg)
+b: Galactic latitude (deg)
+l: Galactic longitude (deg)
+u: Shorthand alias for modelMag (mag)
+g: Shorthand alias for modelMag (mag)
+r: Shorthand alias for modelMag (mag)
+i: Shorthand alias for modelMag (mag)
+z: Shorthand alias for modelMag (mag)
+
+The various measurements are taken by the SDSS camera which has five filters, which together span the optical window. These filters are labeled u, g, r, i and z and are indicated with the corresponding letter at the end of each variable name. 
+
+Loading the data and working with this large of a data frame results in long processing time in R. For this demonstration, the training set was randomly sampled to collect 10,000 observations. The sample file is included with this demo.
+
+#Research Question
+Which variables have the largest loadings in the principal components that explain the most variance? 
+
+#Reading in the data
+```{r}
+dat<-read.csv("samp_celestial.csv", header = TRUE)
+head(dat)
+
+```
+
+
+#Cleaning the data
+
+Assess variable types to ensure they are compliant with data requirements for PCA. PCA does not have an outcome variable and although performing PCA on non-continuous data is possible, it's best to have continuous variables.
+
+Almost all of the variables are continuous with the exception of the character variable for denoting a galaxy or star. Before any principal component analysis, we will want to ensure no data is missing. The necessity of the values will also be evaluated. For this data set, the index value, unique identifier, run number, camera column, field, and celestial object type (galaxy or star) will be removed. These variables will not be needed for PCA.
+
+```{r}
+# View data types
+str(dat)
+
+# Removing index, object ID, run, camcol, field, and type variables. Run, camcol, field, and type variables are composites of object ID and are not qualities of the celestial objects worth analyzing.
+dat.sub<-dat[ , -c(1,2,3,4,5,6)]
+
+# Check for NA values, PCA should not be performed on data with missing values.
+sum(is.na(dat))
+```
+
+Primary Component Analysis (PCA) is a a non-parametric method best used on large datasets with many continuous features that are correlated.
+
+The following plots demonstrate the relationship between various variables in the data set. Some relevant information is that astronomers use two scales to measure the brightness of astronomical sources: the magnitude scale and the flux scale. Magnitude and flux are logarithmically related. 
+
+# Including Plots
+```{r}
+
+# Many of these variables are closely related as they are measuring the same/similar celestial qualities. These graphs demonstrate the relationship between magnitude and flux measurements.
+ggplot(dat.sub, aes(x=modelFlux_u, y=u)) + 
+    geom_point()+ggtitle("modelMag-modelFlux")+xlab("nanomaggies")+ylab("mag")
+
+ggplot(dat.sub, aes(x=modelFlux_u, y=psfMag_u)) + 
+    geom_point()+ggtitle("PSF magnitude-modelFlux")+xlab("nanomaggies")+ylab("mag")
+
+# Linearly correlated variables. Both these variables are measurements of magnitude.
+ggplot(dat.sub, aes(x=u, y=psfMag_u)) + 
+    geom_point()+ggtitle("PSF magnitude-modelMag")+xlab("nanomaggies")+ylab("mag")
+
+ggplot(dat.sub, aes(x=g, y=psfMag_g)) + 
+    geom_point()+ggtitle("modelMag-modelFlux")+xlab("nanomaggies")+ylab("mag")
+
+
+# There is a relationship between Stokes parameters and polarization ellipse parameters.
+ggplot(dat.sub, aes(x=q_i, y=u_i)) + 
+    geom_point()+ggtitle("Stokes U parameter-Stokes Q parameter ")+xlab("q_i")+ylab("u_i")
+
+ggplot(dat.sub, aes(x=q_z, y=u_z)) + 
+    geom_point()+ggtitle("Stokes U parameter-Stokes Q parameter ")+xlab("q_z")+ylab("u_z")
+
+ggplot(dat.sub, aes(x=q_r, y=u_r)) + 
+    geom_point()+ggtitle("Stokes U parameter-Stokes Q parameter ")+xlab("q_r")+ylab("u_r")
+
+```
+
+
+## PCA Method
+PCA is a dimensionality reduction technique that makes large data sets more manageable
+by constructing new variables that are linear combinations of the initial variables (principal components) that best retain the characteristics of the original data set.
+
+There are general requirements for PCA, however you don't need to vigorously check these assumptions prior to performing PCA. Generally, your data should be linearly related, variables should be continuous, there shouldn’t be any outliers, and you should have many variables and observations.
+
+The first step in performing PCA is to standardize the range of the continuous variables. This is done because PCA is sensitive to differences in variances among initial variables.
+Next, compute the covariance matrix. Essentially, the covariance matrix summarizes the correlation between all variables. The next step is to compute the eigenvectors and eigenvalues of the covariance matrix. The eigenvectors of the covariance matrix are the principal components, and the eigenvalues describe the amount of variance carried in each principal component. Using the prcomp() function, R accomplishes these steps.
+
+```{r}
+# Use prcomp to perform PCA on data, set scale = TRUE to standardize each variable to have a mean of 0 and a standard deviation of 1.
+pca_result <- prcomp(dat.sub, scale = TRUE)
+
+# View eigenvalues
+get_eigenvalue(pca_result)
+
+# The summary function on the result object gives us standard deviation, proportion of variance explained by each principal component, and the cumulative proportion of variance explained.
+summary(pca_result)
+
+# Extract and visualize the eigenvalues/variances of dimensions: "Scree plot" (factoextra).
+fviz_eig(pca_result, addlabels = TRUE)
+
+# Display the principal components (the eigenvectors of the covariance matrix), in the original coordinate system. These are the loadings.
+options(max.print=10000) # increase printed variables
+pca_result$rotation
+
+# Biplot with all variables
+fviz_pca(pca_result, label = "var", labelsize = 2, habillage = dat$type, col.var = "black", jitter = "point")
+
+# Biplot of variables with largest PC1 and PC2 loadings
+fviz_pca(pca_result, label = "var", labelsize = 2, habillage = dat$type, col.var = "black", jitter = "point", select.var = list(name = c("expAB_u", "expAB_g", "expAB_r", "expAB_i", "expAB_z", "modelFlux_g", "modelFlux_u", "modelFlux_r","modelFlux_i","modelFlux_z", "psfMag_u", "psfMag_g", "psfMag_r", "psfMag_i", "psfMag_z", "u", "g", "r", "i", "z")))
+
+# Viewing biplots of different PCs. This is done by changing the axes (axes must be of length 2)
+fviz_pca(pca_result, axes = c(5, 6), label = "var", labelsize = 2, habillage = dat$type, col.var = "black", jitter = "point")
+
+fviz_pca(pca_result, axes = c(9, 10), label = "var", labelsize = 2, habillage = dat$type, col.var = "black", jitter = "point")
+
+# This shows the relative contribution of original variables to the PC1 and PC2. Change axes to view different PCs (no limit on axes length).
+fviz_contrib(pca_result, choice ="var",axes=1:2)
+
+# Display your data set projected on the principal components ("rotated")
+options(max.print=1000)
+pca_result$x
+
+```
+
+
+Next, form a feature vector, that is, a matrix with the chosen principal components you want to keep. You can analyze just the feature vectors, or you can go further and use the feature vector to reorient the original data and perform further analyses. Kaiser's Rule retains principal components with eigenvalues greater than 1.  If a certain percentage of the explained variability within the data is the goal, then that cumulative variance percent can be used to identify which components to keep by viewing the eigenvalue table.The scree plot can be used as another way to determine which components to keep (those left of the elbow-where a significant drop is shown). For this example the first 14 components were chosen to form the feature vector using Kaiser's Rule.
+
+## Summary
+
+The first principal component accounts for 23.1% of the explained variability in the data while the second principal component accounts for 8.7%. Looking at the biplot and the loading values in PC1 we see that expAB, psfMag, and modelMag (u, g, r, i, z) have the largest contributions to the first principal component, while PC2 is represented primarily by modelFlux measures.  
+
+The same measurements with different filters tend to load together across PC1 and PC2. This indicates that these PCs are associated with different measurement types opposed to the different filters. Furthermore, variables of similar measurement type cluster together in the initial PCs. For example, the variables u, g, r, i, z and psfMag_u, psfMag_g, psfMag_r, psfMag_i and psfMag_z cluster together as they are all magnitude measures of brightness in the celestial object.
+
+## References
+
+Outside Reference 1: https://online.stat.psu.edu/stat505/lesson/11
+
+Outside Reference 2: https://towardsdatascience.com/principal-component-analysis-pca-explained-visually-with-zero-math-1cbf392b9e7d
+
+Outside Reference 3: https://www.researchgate.net/publication/316652806_Principal_Component_Analysis 
+
+Outside Reference 4: https://www.cs.cmu.edu/~elaw/papers/pca.pdf 
+
+Outside Reference 5: https://mathvoices.ams.org/featurecolumn/2021/08/01/principal-component-analysis/ 
+
+Outside Reference 6: https://royalsocietypublishing.org/doi/10.1098/rsta.2015.0202
+
+Outside Reference 7: https://uw.pressbooks.pub/appliedmultivariatestatistics/chapter/pca/ 
+
+Outside Reference 8 (R reference): https://bookdown.org/brian_nguyen0305/Multivariate_Statistical_Analysis_with_R/
+
+Outside Reference 9 (R reference): https://www.statology.org/principal-components-analysis-in-r/
+
+Outside Reference 10 (R reference): http://faculty.concordia.ca/pperesne/BIOL_422_680/tutorial-12-pca-and-rda.html 

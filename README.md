@@ -8,7 +8,7 @@ My partner Gayla Hess and I performed principal component analysis on a subset o
 The variable explanations are as followed:
 
 objID: Unique SDSS identifier composed from [skyVersion,rerun,run,camcol,field,obj]. 
-run: Run number 
+run: Run number <br />
 camcol: Camera column 
 field: Field number
 type: Type classification of the object (star, galaxy, cosmic ray, etc.)
